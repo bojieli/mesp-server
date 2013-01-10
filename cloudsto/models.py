@@ -3,19 +3,6 @@ from mesp.settings import DBNAME
 
 connect(DBNAME)
 
-class DataEntry(DynamicEmbeddedDocument):
-    sn = IntField() # serial number
-    DATA_SOURCES = (1, # pedometer
-                    2, # temperature
-                    3, # humidity
-                    4, # ultraviolet
-                   )
-    source = IntField(choices=DATA_SOURCES)
-    # here goes the dynamic fields
-    meta = {
-        'indexes': ['sn']
-    }
-
 class Account(Document):
     ACCOUNT_SOURCES = (1, # local admin
                        2, # renren
@@ -39,9 +26,22 @@ class AppInstance(Document):
     app_type = IntField(choices=APP_TYPES)
     register_time = DateTimeField()
     token = StringField()
-    data = ListField(EmbeddedDocumentField(DataEntry))
     meta = {
         'indexes': ['token']
+    }
+
+class DataEntry(DynamicDocument):
+    app = ReferenceField(AppInstance)
+    sn = IntField() # serial number
+    DATA_SOURCES = (1, # pedometer
+                    2, # temperature
+                    3, # humidity
+                    4, # ultraviolet
+                   )
+    source = IntField(choices=DATA_SOURCES)
+    # here goes the dynamic fields
+    meta = {
+        'indexes': [('app','sn')]
     }
 
 class AccessLog(Document):

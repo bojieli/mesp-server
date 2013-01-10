@@ -1,5 +1,5 @@
 from cloudsto.models import *
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 import base64
 import random
 from cloudsto.apiconnect import ApiConnect
@@ -20,7 +20,7 @@ def index(request):
 
 def register(request):
     try:
-        req = _get_body()
+        req = _get_body(request)
         app_type = req.getbyte()
         source = req.getbyte()
         username = req.getstr()
@@ -29,18 +29,23 @@ def register(request):
         return HttpResponse(chr(1) + e.args[0]) # parse error
     if not ApiConnect.checkAccount(source, username, api_token):
         return HttpResponse(chr(2) + "Account activation failure")
-    TOKEN_LENGTH=20
+    TOKEN_LENGTH=40
     token = _token_gen(TOKEN_LENGTH)
     try:
-        account = Account.get_or_create(source=source, username=username)   
-        AppInstance(account=account,
+        account = Account.objects(source=source, username=username)
+        if len(account) == 0:
+            Account(source=source, username=username).save()
+            account = Account.objects(source=source, username=username)
+        if len(account) > 1:
+            return HttpResponse(chr(4) + "Internal error: too many account instance")
+        AppInstance(account=account[0],
                     app_type=app_type,
                     api_token=api_token,
                     register_time=datetime.now(), 
                     token=token
                    ).save()
-    except:
-        return HttpResponse(chr(3) + "Save instance error")
+    except Exception as e:
+        return HttpResponse(chr(3) + "Save instance error: " + e.args[0])
     response = binstr()
     response.putbyte(0) # status OK
     response.putstr(token)
@@ -72,12 +77,12 @@ def register(request):
 
 def save(request):
     try:
-        req = _get_body()
+        req = _get_body(request)
         token = req.getstr()
         entry_num = req.getlong()
     except Exception as e:
         return HttpResponse(chr(1) + e.args[0]) # parse error
-    app = AppInstance(token=token)
+    app = AppInstance.objects(token=token)
     if not app:
         return HttpResponse(chr(2) + "Invalid token")
     sn = app.account.next_sn
@@ -94,7 +99,7 @@ def save(request):
     return HttpResponse(resp.toString())
 
 # Request:
-#       token     | sn. begin | sn. num (-1 for unlimited)
+#       token     | sn. begin | sn. num (0 for unlimited)
 #   length(1) str |     4     |    4
 # Note: sn. begin should be end_serial_number + 1
 
@@ -104,21 +109,21 @@ def save(request):
 
 def receive(request):
     try:
-        req = getBody()
+        req = _get_body(request)
         token = req.getstr()
         sn_begin = req.getlong()
         sn_num = req.getlong()
     except Exception as e:
         return HttpResponse(chr(1) + e.args[0]) # parse error
-    app = AppInstance(token=token)
+    app = AppInstance.objects(token=token)
     if not app:
         return HttpResponse(chr(2) + "Invalid token")
-    resp = binfmt()
-    resp.putbyte(0) # status OK
-    if sn_num == -1:
-        entries = app.data.objects(sn__gte=sn_begin)
+    if sn_num == 0:
+        entries = DataEntry.objects(app=app, sn__gte=sn_begin)
     else:
-        entries = app.data.objects(sn__gte=sn_begin, sn__lt=sn_begin+sn_num)
+        entries = DataEntry.objects(app=app, sn__gte=sn_begin, sn__lt=sn_begin+sn_num)
+    resp = binstr()
+    resp.putbyte(0) # status OK
     max_sn = 0
     for entry in entries:
         if entry.sn > max_sn:
@@ -134,6 +139,7 @@ def receive(request):
 
 def save_entry(app, req, sn):
     entry = DataEntry()
+    entry.app = app
     entry.sn = sn
     source = req.getbyte()
     if source == 1:
@@ -152,7 +158,7 @@ def save_entry(app, req, sn):
     else:
         raise Exception(chr(10) + "Invalid source");
     try:
-        entry.insert(app.data) # save to the list
+        entry.save();
     except:
         raise Exception(chr(11) + "Save data failure");
 
@@ -174,11 +180,12 @@ def get_entry(resp, entry):
     else:
         raise Exception(chr(10) + "Internal error");
 
-def _get_body():
+def _get_body(request):
     try:
-        return binstr(HttpRequest.body)
+        if isinstance(request.body, basestring):
+            return binstr(request.body)
     except:
-        return binstr(HttpRequest.raw_post_data)
+        return binstr(request.raw_post_data)
 
 def _token_gen(size, chars=string.ascii_uppercase + string.ascii_lowercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))

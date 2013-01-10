@@ -32,6 +32,8 @@ char *recvbuf;
     str[*recvbuf] = '\0'; \
     recvbuf += *recvbuf+1;
 
+#define prompt(msg, ...) printf(msg "\n > ", ##__VA_ARGS__);
+
 int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf) {
     printf("Sending %d bytes...\n", sendlen);
     tcpclient client;
@@ -40,6 +42,8 @@ int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf) {
     int errorno = http_post(&client, path, sendlen, sendbuf, recvbuf, &recvlen);
     if (errorno) {
         printf("Network error: %d\n", errorno);
+        if (*recvbuf && **recvbuf)
+            printf("Error message: %s\n", *recvbuf);
         return 1;
     }
     printf("Received %d bytes\n", recvlen);
@@ -57,11 +61,17 @@ int do_test() {
 int do_register() {
     char app_type, source;
     char username[MAXLEN], app_token[MAXLEN];
-    printf("app_type(1~3) source(1~4) username(str) app_token(str)\n > ");
-    scanf("%d%d%s%s", (int*)&app_type, (int*)&source, username, app_token);
+    prompt("app_type: 1 for Windows, 2 for Android, 3 for iOS");
+    scanf("%d", (int*)&app_type);
     PUTCHAR(app_type);
+    prompt("source: 1 for local, 2 for renren, 3 for sina weibo, 4 for tencent weibo");
+    scanf("%d", (int*)&source);
     PUTCHAR(source);
+    prompt("username");
+    scanf("%s", username);
     PUTS(username);
+    prompt("app token");
+    scanf("%s", app_token);
     PUTS(app_token);
     char *recvbuf = NULL;
     if (cloudsto_post("/cloudsto/register", sendptr-sendbuf, sendbuf, &recvbuf))
@@ -71,7 +81,7 @@ int do_register() {
     if (status != 0)
         printf("errmsg = %s\n", recvbuf);
     else
-        printf("token = %s\n", recvbuf);
+        printf("token = %s\n", recvbuf+1);
     return 0;
 }
 
@@ -79,18 +89,20 @@ int do_save() {
     char token[MAXLEN];
     int entry_num;
     char source;
-    printf("token(str) entry_num(long) entry-1 entry-2...\n");
-    scanf("%s%d", token, &entry_num);
+    prompt("token (given by register)");
+    scanf("%s", token);
     PUTS(token);
+    prompt("num of entries");
+    scanf("%d", &entry_num);
     PUTLONG(entry_num);
     while (entry_num-- > 0) {
-        printf("source(byte): 1 for pedometer, 2 for temperature, 3 for humidity, 4 for ultraviolet\n > ");
+        prompt("source: 1 for pedometer, 2 for temperature, 3 for humidity, 4 for ultraviolet");
         scanf("%d", (int*)&source);
         PUTCHAR(source);
         switch (source) {
             int start_time, end_time, step_count, interval, data_count, time, data;
             case 1:
-                printf("start_time(long), end_time(long), step_count(long)\n > ");
+                prompt("start_time(long), end_time(long), step_count(long)");
                 scanf("%d%d%d", &start_time, &end_time, &step_count);
                 PUTLONG(start_time);
                 PUTLONG(end_time);
@@ -98,19 +110,19 @@ int do_save() {
                 break;
             case 2:
             case 3:
-                printf("start_time(long), interval(long), data_count(long)\n > ");
+                prompt("start_time(long), interval(long), data_count(long)");
                 scanf("%d%d%d", &start_time, &interval, &data_count);
                 PUTLONG(start_time);
                 PUTLONG(interval);
                 PUTLONG(data_count);
-                printf("input %d data values\n > ", data_count);
+                prompt("input %d data values", data_count);
                 while (data_count-- > 0) {
                     scanf("%d", &data);
                     PUTLONG(data);
                 }
                 break;
             case 4:
-                printf("time(long), data(long)\n > ");
+                prompt("time(long), data(long)");
                 scanf("%d%d", &time, &data);
                 PUTLONG(time);
                 PUTLONG(data);
@@ -120,12 +132,12 @@ int do_save() {
         }
     }
     char *recvbuf = NULL;
-    if (cloudsto_post("/cloudsto/receive", sendptr-sendbuf, sendbuf, &recvbuf))
+    if (cloudsto_post("/cloudsto/save", sendptr-sendbuf, sendbuf, &recvbuf))
         return 1;
     GETCHAR(status);
     printf("Response: status = %d, ", status);
     if (status != 0)
-        printf("errmsg %s\n", recvbuf);
+        printf("errmsg = %s\n", recvbuf);
     else {
         GETLONG(sn);
         printf("end serial no = %d\n", sn);
@@ -136,9 +148,14 @@ int do_save() {
 int do_receive() {
     char token[MAXLEN];
     int sn_begin, sn_num;
-    printf("receive: token(str) sn_begin(long) sn_num(long)\n");
-    scanf("%d%d", &sn_begin, &sn_num);
+    prompt("token (given by register)");
+    scanf("%s", token);
+    PUTS(token);
+    prompt("beginning serial number");
+    scanf("%d", &sn_begin);
     PUTLONG(sn_begin);
+    prompt("number of serials (0 for unlimited)");
+    scanf("%d", &sn_num);
     PUTLONG(sn_num);
     char *recvbuf = NULL;
     if (cloudsto_post("/cloudsto/receive", sendptr-sendbuf, sendbuf, &recvbuf))
@@ -146,7 +163,7 @@ int do_receive() {
     GETCHAR(status)
     printf("Response: status = %d, ", status);
     if (status != 0) {
-        printf("errmsg %s\n", recvbuf);
+        printf("errmsg = %s\n", recvbuf);
         return 1;
     }
     GETLONG(max_sn)

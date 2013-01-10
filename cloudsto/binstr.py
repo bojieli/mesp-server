@@ -1,8 +1,9 @@
 class binstr:
-    string = ''
-    cursor = 0
     def __init__(self, string=''):
+        if not isinstance(string, basestring):
+            raise Exception("binstr argument should be string")
         self.string = string
+        self.cursor = 0
 
     def getbyte(self):
         value = ord(self.string[self.cursor])

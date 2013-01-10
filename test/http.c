@@ -128,16 +128,8 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
         return -2;
     }
 
-    /* HTTP/1.0 200 OK */
-    memset(post,0,sizeof(post));
-    strncpy(post,lpbuf+9,3);
-    if(atoi(post)!=200){
-        if(lpbuf) free(lpbuf);
-        return atoi(post);
-    }
-
     ptmp = (char*)strstr(lpbuf,"\r\n\r\n");
-    if(ptmp == NULL){
+    if (ptmp == NULL){
         free(lpbuf);
         return -3;
     }
@@ -152,14 +144,22 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
     memset(*response, 0, len+1);
     memcpy(*response, ptmp, len);
 
+    /* HTTP/1.0 200 OK */
+    memset(post, 0, sizeof(post));
+    strncpy(post, lpbuf+9, 3);
+    if (atoi(post) != 200){
+        if(lpbuf) free(lpbuf);
+        return atoi(post);
+    }
+
     ptmp = (char*)strstr(lpbuf, "Content-Length:");
-    if(ptmp != NULL){
+    if (ptmp != NULL) {
         ptmp += 15;
         char *ptmp2 = (char*)strstr(ptmp,"\r\n");
-        if(ptmp2 != NULL){
+        if (ptmp2 != NULL) {
             memset(post,0,sizeof(post));
             strncpy(post,ptmp,ptmp2-ptmp);
-            if(atoi(post)<len)
+            if (atoi(post) < len)
                 (*response)[atoi(post)] = '\0';
         }
     }

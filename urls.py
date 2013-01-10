@@ -5,6 +5,10 @@ from django.conf.urls.defaults import patterns, include, url
 # admin.autodiscover()
 
 urlpatterns = patterns('',
+    url(r'^cloudsto/$', 'cloudsto.views.index'),
+    url(r'^cloudsto/register$', 'cloudsto.views.register'),
+    url(r'^cloudsto/save$', 'cloudsto.views.save'),
+    url(r'^cloudsto/receive$', 'cloudsto.views.receive'),
     # Examples:
     # url(r'^$', 'mesp.views.home', name='home'),
     # url(r'^mesp/', include('mesp.foo.urls')),

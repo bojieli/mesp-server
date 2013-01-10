@@ -1,13 +1,11 @@
 from cloudsto.models import *
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 import base64
 import random
 from cloudsto.apiconnect import ApiConnect
 from cloudsto.binstr import binstr
 from datetime import datetime
-
-def _token_gen(size, chars=string_ascii_uppercase + string.ascii_lowercase + string.digits):
-    return ''.join(random.choice(chars) for x in range(size))
+import string
 
 def index(request):
     return HttpResponse(chr(0)) # status OK
@@ -22,15 +20,15 @@ def index(request):
 
 def register(request):
     try:
-        req = binstr(HttpRequest.body)
+        req = _get_body()
         app_type = req.getbyte()
         source = req.getbyte()
         username = req.getstr()
         api_token = req.getstr()
-    except:
-        return HttpResponse(chr(1))
+    except Exception as e:
+        return HttpResponse(chr(1) + e.args[0]) # parse error
     if not ApiConnect.checkAccount(source, username, api_token):
-        return HttpResponse(chr(2)) # account activation error
+        return HttpResponse(chr(2) + "Account activation failure")
     TOKEN_LENGTH=20
     token = _token_gen(TOKEN_LENGTH)
     try:
@@ -42,7 +40,7 @@ def register(request):
                     token=token
                    ).save()
     except:
-        return HttpResponse(chr(3)) # save instance error
+        return HttpResponse(chr(3) + "Save instance error")
     response = binstr()
     response.putbyte(0) # status OK
     response.putstr(token)
@@ -74,21 +72,21 @@ def register(request):
 
 def save(request):
     try:
-        req = binstr(HttpRequest.body)
+        req = _get_body()
         token = req.getstr()
         entry_num = req.getlong()
-    except:
-        return HttpResponse(chr(1)) # parse error
+    except Exception as e:
+        return HttpResponse(chr(1) + e.args[0]) # parse error
     app = AppInstance(token=token)
     if not app:
-        return HttpResponse(chr(2)) # invalid token
+        return HttpResponse(chr(2) + "Invalid token")
     sn = app.account.next_sn
     app.account.update_one(inc__next_sn=1)
     for i in range(entry_num):
         try:
             save_entry(app, req, sn)
         except Exception as e:
-            return HttpResponse(chr(e.args[0]))
+            return HttpResponse(e.args[0])
 
     resp = binfmt()
     resp.putbyte(0) # status OK
@@ -106,20 +104,20 @@ def save(request):
 
 def receive(request):
     try:
-        req = binstr(HttpRequest.body)
+        req = getBody()
         token = req.getstr()
         sn_begin = req.getlong()
         sn_num = req.getlong()
-    except:
-        return HttpResponse(chr(1)) # parse error
+    except Exception as e:
+        return HttpResponse(chr(1) + e.args[0]) # parse error
     app = AppInstance(token=token)
     if not app:
-        return HttpResponse(chr(2)) # invalid token
+        return HttpResponse(chr(2) + "Invalid token")
     resp = binfmt()
     resp.putbyte(0) # status OK
     if sn_num == -1:
         entries = app.data.objects(sn__gte=sn_begin)
-    else
+    else:
         entries = app.data.objects(sn__gte=sn_begin, sn__lt=sn_begin+sn_num)
     max_sn = 0
     for entry in entries:
@@ -128,7 +126,10 @@ def receive(request):
     resp.putlong(max_sn)
     resp.putlong(entries.count())
     for entry in entries:
-        get_entry(resp, entry)
+        try:
+            get_entry(resp, entry)
+        except Exception as e:
+            return HttpResponse(e.args[0])
     return HttpResponse(resp.toString())
 
 def save_entry(app, req, sn):
@@ -139,21 +140,21 @@ def save_entry(app, req, sn):
         entry.start_time = req.getlong()
         entry.end_time = req.getlong()
         entry.step_count = req.getlong()
-    else if source in [2,3]:
+    elif source in [2,3]:
         entry.start_time = req.getlong()
         entry.interval = req.getlong()
         count = req.getlong()
         for i in range(count):
             entry.data[i] = req.getlong()
-    else if source == 4:
+    elif source == 4:
         entry.time = req.getlong()
         entry.data = req.getlong()
-    else
-        raise Exception(10) # invalid source
+    else:
+        raise Exception(chr(10) + "Invalid source");
     try:
         entry.insert(app.data) # save to the list
     except:
-        raise Exception(11) # data save error
+        raise Exception(chr(11) + "Save data failure");
 
 def get_entry(resp, entry):
     resp.putlong(entry.source)
@@ -161,15 +162,24 @@ def get_entry(resp, entry):
         resp.putlong(entry.start_time)
         resp.putlong(entry.end_time)
         resp.putlong(entry.step_count)
-    else if entry.source in [2,3]:
+    elif entry.source in [2,3]:
         resp.putlong(entry.start_time)
         resp.putlong(entry.interval)
         resp.putlong(entry.data.count())
         for d in entry.data:
             resp.putlong(d)
-    else if entry.source == 4:
+    elif entry.source == 4:
         resp.putlong(entry.time)
         resp.putlong(entry.data)
-    else
-        raise Exception(10) # internal error
+    else:
+        raise Exception(chr(10) + "Internal error");
+
+def _get_body():
+    try:
+        return binstr(HttpRequest.body)
+    except:
+        return binstr(HttpRequest.raw_post_data)
+
+def _token_gen(size, chars=string.ascii_uppercase + string.ascii_lowercase + string.digits):
+    return ''.join(random.choice(chars) for x in range(size))
 

@@ -1,0 +1,56 @@
+SOURCE CODE REPOSITORY FOR MESP
+-------------------------------
+(C) 2013 GewuIT.com. All rights reserved.
+
+This is the code repo for Mesp cloud storage.
+
+CLIENT
+------
+
+An example client is in test/ directory.
+It is written in C, using POSIX networking API.
+
+If you are running Linux:
+    cd test/
+    make
+    ./cloudsto
+
+There is currently no Windows port of the example client, but the networking functionality is well encapsulated in http.c. You can rewrite tcp_... functions to their Windows counterparts.
+
+The cloudsto program is an interactive shell. Its code (cloudsto.c) can be reused to write a C program to be used in production.
+
+The default IP and port of Mesp server is 127.0.0.1 and 8080. They are defined in macros MESP_SERVER and MESP_PORT in test/cloudsto.c, which can be easily changed.
+
+A testing service have been provided (without third-party API checking):
+    server: 202.38.95.74
+    port: 8080
+
+For more information about the API, read the comments in server code:
+    cloudsto/views.py
+The lines starting with "#" are comments.
+
+SERVER
+------
+
+The server is written in Python using Django framework and Mongodb for persistent storage.
+
+To run the server, you should install:
+    python2
+    python-django
+    mongodb
+    pymongo
+    python-mongoengine
+
+Start the server:
+    python2 manage.py runserver
+This will listen 8000 on localhost (127.0.0.1) on foreground.
+In production environment, the server should be run in background.
+
+To listen a different port (say, 8080):
+    python2 manage.py runserver 8080
+
+MongoDB schema:
+    cloudsto/models.py
+
+Any problems or concerns, please contact bojieli@gmail.com
+

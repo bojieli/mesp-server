@@ -3,6 +3,9 @@
 #include <string.h>
 #include "http.h"
 
+#define MESP_SERVER "127.0.0.1"
+#define MESP_PORT 8080
+
 #define MAXLEN 10000
 char sendbuf[MAXLEN];
 char *sendptr;
@@ -37,7 +40,7 @@ char *recvbuf;
 int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf) {
     printf("Sending %d bytes...\n", sendlen);
     tcpclient client;
-    tcpclient_create(&client, "127.0.0.1", 8080);
+    tcpclient_create(&client, MESP_SERVER, MESP_PORT);
     int recvlen;
     int errorno = http_post(&client, path, sendlen, sendbuf, recvbuf, &recvlen);
     if (errorno) {

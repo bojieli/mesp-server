@@ -93,10 +93,10 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
 
     char post[300],host[100],content_len[100];
     char *lpbuf = NULL, *ptmp = NULL;
-    const char *header = "User-Agent: MESP Tester\r\n";
+    const char *header = "User-Agent: MESPTester\r\nConnection: close\r\n";
 
     sprintf(post,"POST %s HTTP/1.1\r\n",path);
-    sprintf(host,"HOST: %s:%d\r\n",pclient->remote_ip,pclient->remote_port);
+    sprintf(host,"Host: %s:%d\r\n", pclient->remote_ip, pclient->remote_port);
     sprintf(content_len,"Content-Length: %d\r\n\r\n",reqlen);
 
     int len = strlen(post)+strlen(host)+strlen(header)+strlen(content_len)+reqlen+1;

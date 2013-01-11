@@ -101,9 +101,8 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
 
     int len = strlen(post)+strlen(host)+strlen(header)+strlen(content_len)+reqlen+1;
     lpbuf = (char*)malloc(len);
-    if(lpbuf==NULL){
+    if(lpbuf==NULL)
         return -1;
-    }
 
     strcpy(lpbuf,post);
     strcat(lpbuf,host);
@@ -116,10 +115,10 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
     }
 
     if(tcpclient_send(pclient,lpbuf,len)<0){
+        free(lpbuf);
         return -1;
     }
-
-    if(lpbuf != NULL) free(lpbuf);
+    free(lpbuf);
     lpbuf = NULL;
 
     int resplen = tcpclient_recv(pclient,&lpbuf,0);
@@ -136,9 +135,9 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
     ptmp += 4; /* skip \r\n */
 
     len = resplen - (ptmp - lpbuf);
-    *response = (char*)malloc(len);
+    *response = (char*)malloc(len+1);
     if (*response == NULL) {
-        if(lpbuf) free(lpbuf);
+        free(lpbuf);
         return -1;
     }
     memset(*response, 0, len+1);
@@ -146,25 +145,27 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
 
     /* HTTP/1.0 200 OK */
     memset(post, 0, sizeof(post));
-    strncpy(post, lpbuf+9, 3);
+    strncpy(post, lpbuf+strlen("HTTP/1.0 "), 3);
     if (atoi(post) != 200){
-        if(lpbuf) free(lpbuf);
+        free(lpbuf);
         return atoi(post);
     }
 
     ptmp = (char*)strstr(lpbuf, "Content-Length:");
+    free(lpbuf);
     if (ptmp != NULL) {
-        ptmp += 15;
+        ptmp += strlen("Content-Length:");
         char *ptmp2 = (char*)strstr(ptmp,"\r\n");
         if (ptmp2 != NULL) {
             memset(post,0,sizeof(post));
             strncpy(post,ptmp,ptmp2-ptmp);
-            if (atoi(post) < len)
+            if (atoi(post) < len) {
                 (*response)[atoi(post)] = '\0';
+                len = atoi(post);
+            }
         }
     }
 
     *recvlen = len;
-    if(lpbuf) free(lpbuf);
     return 0;
 }

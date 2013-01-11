@@ -32,13 +32,8 @@ def register(request):
     TOKEN_LENGTH=40
     token = _token_gen(TOKEN_LENGTH)
     try:
-        account = Account.objects(source=source, username=username)
-        if len(account) == 0:
-            Account(source=source, username=username).save()
-            account = Account.objects(source=source, username=username)
-        if len(account) > 1:
-            return HttpResponse(chr(4) + "Internal error: too many account instance")
-        AppInstance(account=account[0],
+        account, created = Account.objects.get_or_create(source=source, username=username)
+        AppInstance(account=account,
                     app_type=app_type,
                     api_token=api_token,
                     register_time=datetime.now(), 
@@ -82,18 +77,21 @@ def save(request):
         entry_num = req.getlong()
     except Exception as e:
         return HttpResponse(chr(1) + e.args[0]) # parse error
-    app = AppInstance.objects(token=token)
-    if not app:
+    if entry_num < 1:
+        return HttpResponse(chr(3) + "Entry num must be positive")
+    try:
+        app = AppInstance.objects.get(token=token)
+    except:
         return HttpResponse(chr(2) + "Invalid token")
     sn = app.account.next_sn
-    app.account.update_one(inc__next_sn=1)
+    Account.objects(id=app.account.id).update_one(inc__next_sn=1)
     for i in range(entry_num):
         try:
             save_entry(app, req, sn)
         except Exception as e:
             return HttpResponse(e.args[0])
 
-    resp = binfmt()
+    resp = binstr()
     resp.putbyte(0) # status OK
     resp.putlong(sn)
     return HttpResponse(resp.toString())
@@ -115,8 +113,9 @@ def receive(request):
         sn_num = req.getlong()
     except Exception as e:
         return HttpResponse(chr(1) + e.args[0]) # parse error
-    app = AppInstance.objects(token=token)
-    if not app:
+    try:
+        app = AppInstance.objects.get(token=token)
+    except:
         return HttpResponse(chr(2) + "Invalid token")
     if sn_num == 0:
         entries = DataEntry.objects(app=app, sn__gte=sn_begin)
@@ -129,7 +128,7 @@ def receive(request):
         if entry.sn > max_sn:
             max_sn = entry.sn
     resp.putlong(max_sn)
-    resp.putlong(entries.count())
+    resp.putlong(len(entries))
     for entry in entries:
         try:
             get_entry(resp, entry)
@@ -138,47 +137,63 @@ def receive(request):
     return HttpResponse(resp.toString())
 
 def save_entry(app, req, sn):
-    entry = DataEntry()
-    entry.app = app
-    entry.sn = sn
-    source = req.getbyte()
-    if source == 1:
-        entry.start_time = req.getlong()
-        entry.end_time = req.getlong()
-        entry.step_count = req.getlong()
-    elif source in [2,3]:
-        entry.start_time = req.getlong()
-        entry.interval = req.getlong()
-        count = req.getlong()
-        for i in range(count):
-            entry.data[i] = req.getlong()
-    elif source == 4:
-        entry.time = req.getlong()
-        entry.data = req.getlong()
-    else:
-        raise Exception(chr(10) + "Invalid source");
     try:
-        entry.save();
-    except:
-        raise Exception(chr(11) + "Save data failure");
+        entry = DataEntry()
+        entry.app = app
+        entry.sn = sn
+        entry.source = req.getbyte()
+        if entry.source == 1:
+            entry.start_time = req.getlong()
+            entry.end_time = req.getlong()
+            entry.step_count = req.getlong()
+        elif entry.source in [2,3]:
+            entry.start_time = req.getlong()
+            entry.interval = req.getlong()
+            entry.data = []
+            count = req.getlong()
+            if count < 1:
+                raise Exception(12, "data count must be positive")
+            for i in range(count):
+                entry.data.append(req.getlong())
+        elif entry.source == 4:
+            entry.time = req.getlong()
+            entry.data = req.getlong()
+        else:
+            raise Exception(10, "Invalid source")
+        try:
+            entry.save()
+        except:
+            raise Exception(11, "Save data failure")
+    except Exception as e:
+        if isinstance(e.args[0], int):
+            raise Exception(chr(e.args[0]) + e.args[1])
+        else:
+            import sys
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            raise Exception(chr(13) + e.args[0] + " at line " + str(exc_tb.tb_lineno))
 
 def get_entry(resp, entry):
-    resp.putlong(entry.source)
-    if entry.source == 1:
-        resp.putlong(entry.start_time)
-        resp.putlong(entry.end_time)
-        resp.putlong(entry.step_count)
-    elif entry.source in [2,3]:
-        resp.putlong(entry.start_time)
-        resp.putlong(entry.interval)
-        resp.putlong(entry.data.count())
-        for d in entry.data:
-            resp.putlong(d)
-    elif entry.source == 4:
-        resp.putlong(entry.time)
-        resp.putlong(entry.data)
-    else:
-        raise Exception(chr(10) + "Internal error");
+    try:
+        resp.putbyte(entry.source)
+        if entry.source == 1:
+            resp.putlong(entry.start_time)
+            resp.putlong(entry.end_time)
+            resp.putlong(entry.step_count)
+        elif entry.source in [2,3]:
+            resp.putlong(entry.start_time)
+            resp.putlong(entry.interval)
+            resp.putlong(len(entry.data))
+            for d in entry.data:
+                resp.putlong(d)
+        elif entry.source == 4:
+            resp.putlong(entry.time)
+            resp.putlong(entry.data)
+        else:
+            raise Exception("Invalid source type")
+    except Exception as e:
+        import sys
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        raise Exception(chr(10) + e.args[0] + " at line " + str(exc_tb.tb_lineno))
 
 def _get_body(request):
     try:

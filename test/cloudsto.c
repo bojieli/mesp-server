@@ -4,12 +4,12 @@
 #include "http.h"
 
 #define MAXLEN 10000
-char sendbuf[MAXLEN] = {0};
-char *sendptr = sendbuf;
+char sendbuf[MAXLEN];
+char *sendptr;
 char *recvbuf;
 
 #define PUTCHAR(var) do{ \
-    *sendptr++ = (var); \
+    *sendptr++ = (unsigned char)(var); \
 } while(0)
 #define PUTLONG(var) do{ \
     *sendptr++ = (var)>>24; \
@@ -19,13 +19,13 @@ char *recvbuf;
 } while(0)
 #define PUTS(str) do{ \
     int len = strlen(str); \
-    PUTLONG(len); \
+    PUTCHAR(len); \
     memcpy(sendptr, (str), len); \
     sendptr += len; \
 } while(0)
 
-#define GETLONG(var) int var = ((*(recvbuf)++<<24) + (*(recvbuf)++<<16) + (*(recvbuf)++<<8) + (*(recvbuf)++));
-#define GETCHAR(var) char var = (*(recvbuf)++);
+#define GETLONG(var) int var = (recvbuf[0]<<24) + (recvbuf[1]<<16) + (recvbuf[2]<<8) + recvbuf[3]; recvbuf+=4;
+#define GETCHAR(var) char var = *recvbuf++;
 #define GETSTR(str) \
     char* str = malloc(*recvbuf)+1; \
     memcpy(str, recvbuf+1, *recvbuf); \
@@ -37,7 +37,7 @@ char *recvbuf;
 int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf) {
     printf("Sending %d bytes...\n", sendlen);
     tcpclient client;
-    tcpclient_create(&client, "127.0.0.1", 8000);
+    tcpclient_create(&client, "127.0.0.1", 8080);
     int recvlen;
     int errorno = http_post(&client, path, sendlen, sendbuf, recvbuf, &recvlen);
     if (errorno) {
@@ -59,13 +59,13 @@ int do_test() {
 }
 
 int do_register() {
-    char app_type, source;
+    int app_type, source;
     char username[MAXLEN], app_token[MAXLEN];
     prompt("app_type: 1 for Windows, 2 for Android, 3 for iOS");
-    scanf("%d", (int*)&app_type);
+    scanf("%d", &app_type);
     PUTCHAR(app_type);
     prompt("source: 1 for local, 2 for renren, 3 for sina weibo, 4 for tencent weibo");
-    scanf("%d", (int*)&source);
+    scanf("%d", &source);
     PUTCHAR(source);
     prompt("username");
     scanf("%s", username);
@@ -88,7 +88,7 @@ int do_register() {
 int do_save() {
     char token[MAXLEN];
     int entry_num;
-    char source;
+    int source;
     prompt("token (given by register)");
     scanf("%s", token);
     PUTS(token);
@@ -97,7 +97,7 @@ int do_save() {
     PUTLONG(entry_num);
     while (entry_num-- > 0) {
         prompt("source: 1 for pedometer, 2 for temperature, 3 for humidity, 4 for ultraviolet");
-        scanf("%d", (int*)&source);
+        scanf("%d", &source);
         PUTCHAR(source);
         switch (source) {
             int start_time, end_time, step_count, interval, data_count, time, data;
@@ -216,6 +216,8 @@ int main(int argc, char** argv) {
         printf("actions: test register save receive\n");
         return 1;
     }
+    sendptr = sendbuf;
+    memset(sendbuf, 0, sizeof(sendbuf));
     if (strcmp(argv[1], "test") == 0) {
         return do_test();
     } else if (strcmp(argv[1], "register") == 0) {

@@ -1,0 +1,68 @@
+[THIS FILE IS UTF-8 ENCODED]
+
+答题器云存储API说明
+
+include/datiqi.h    答题器客户端数据结构与接口头文件
+src/datiqi_api.c    答题器C语言接口实现（参数说明见注释）
+src/datiqi_demo.c   答题器交互测试程序
+
+===============
+云存储二进制API：（建议直接使用src/datiqi_api.c中的接口，以下说明仅供参考）
+
+全部采用HTTP POST协议传输，传输的数据分为三种类型：
+1. （下称char）unsigned char型整数，占用1字节
+2. （下称int）unsigned int型整数，占用4字节，大端（低内存地址高字节）
+3. （下称string）字符串（长度不超过255），占用strlen(str)+1字节，第1字节为字符串长度，后续字节为字符串本身。字符串结尾没有\0，因为已经有了字符串长度。
+
+接收数据的第1字节是状态码，0表示正常，非0表示错误。非0错误码后紧跟着错误字符串。
+
+================
+操作：
+
+1. 注册
+URL: /datiqi/register
+REQUEST:
+内容    用户名   密码
+类型    string  string
+RESPONSE:
+内容    状态码  token（为此用户唯一分配的）
+类型    char    string
+
+2. 登录
+URL: /datiqi/login
+REQUEST:
+内容    用户名  密码
+类型    string  string
+RESPONSE:
+内容    状态码  token（注册时唯一分配的）
+类型    char    string
+
+3. 保存答题结果
+URL: /datiqi/save
+REQUEST:
+内容    token   开始时间 答题人数 学生1答案 学生1用时 学生2答案 学生2用时 ...
+类型    string    int      int      string     int      string    int
+RESPONSE:
+内容    状态码  序列号（每个答题结果一个，顺序编号）
+类型    char    int
+
+4. 修改答题结果
+URL: /datiqi/modify
+REQUEST:
+内容    token   序列号  开始时间 答题人数    学生1       学生2
+                                          答案   用时  答案   用时 ...
+类型    string  int       int      int    string int   string int
+RESPONSE:
+内容    状态码
+类型    char
+
+5. 获取答题结果
+URL: /datiqi/fetch
+REQUEST:
+内容    token   开始序列号  获取数目（0表示所有）
+类型    string  int         int
+RESPONSE:
+内容    状态码  答题结果个数 |          某次答题        |          某次答题        | ...
+                             | 序列号 开始时间 人数 ... | 序列号 开始时间 人数 ... |
+类型    char    int          | int    int      int      | int    int      int      |
+

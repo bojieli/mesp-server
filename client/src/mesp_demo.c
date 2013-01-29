@@ -1,25 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "datiqi.h"
+#include "mesp.h"
 
-int do_register() {
-    char username[MAXLEN], password[MAXLEN], password_repeat[MAXLEN];
+int demo_register() {
+    int app_type, source;
+    char username[MAXLEN], app_token[MAXLEN];
+    prompt("app_type: 1 for Windows, 2 for Android, 3 for iOS");
+    scanf("%d", &app_type);
+    PUTCHAR(app_type);
+    prompt("source: 1 for local, 2 for renren, 3 for sina weibo, 4 for tencent weibo");
+    scanf("%d", &source);
+    PUTCHAR(source);
     prompt("username");
     scanf("%s", username);
     PUTS(username);
-    prompt("password");
-    scanf("%s", password);
-    prompt("repeat password");
-    scanf("%s", password_repeat);
-    if (strcmp(password, password_repeat) != 0) {
-        printf("Passwords mismatch!\n");
-        return 1;
-    }
-    PUTS(password);
+    prompt("app token");
+    scanf("%s", app_token);
+    PUTS(app_token);
     char *recvbuf = NULL;
     if (cloudsto_post("register", sendptr-sendbuf, sendbuf, &recvbuf))
         return 1;
-    GETCHAR(status)
+    int status = GETCHAR();
     printf("Response: status = %d, ", status);
     if (status != 0)
         printf("errmsg = %s\n", recvbuf);
@@ -28,10 +29,7 @@ int do_register() {
     return 0;
 }
 
-int do_login() {
-}
-
-int do_save() {
+int demo_save() {
     char token[MAXLEN];
     int entry_num;
     int source;
@@ -78,20 +76,19 @@ int do_save() {
         }
     }
     char *recvbuf = NULL;
-    if (cloudsto_post("/cloudsto/save", sendptr-sendbuf, sendbuf, &recvbuf))
+    if (cloudsto_post("save", sendptr-sendbuf, sendbuf, &recvbuf))
         return 1;
-    GETCHAR(status);
+    int status = GETCHAR();
     printf("Response: status = %d, ", status);
     if (status != 0)
         printf("errmsg = %s\n", recvbuf);
     else {
-        GETLONG(sn);
-        printf("end serial no = %d\n", sn);
+        printf("end serial no = %d\n", GETLONG());
     }
     return 0;
 }
 
-int do_receive() {
+int demo_receive() {
     char token[MAXLEN];
     int sn_begin, sn_num;
     prompt("token (given by register)");
@@ -104,50 +101,52 @@ int do_receive() {
     scanf("%d", &sn_num);
     PUTLONG(sn_num);
     char *recvbuf = NULL;
-    if (cloudsto_post("/cloudsto/receive", sendptr-sendbuf, sendbuf, &recvbuf))
+    if (cloudsto_post("receive", sendptr-sendbuf, sendbuf, &recvbuf))
         return 1;
-    GETCHAR(status)
+    int status = GETCHAR();
     printf("Response: status = %d, ", status);
     if (status != 0) {
         printf("errmsg = %s\n", recvbuf);
         return 1;
     }
-    GETLONG(max_sn)
-    GETLONG(entries)
+    int max_sn = GETLONG();
+    int entries = GETLONG();
     printf("max serial no = %d, received entries = %d\n", max_sn, entries);
     while (entries-- > 0) {
-        GETCHAR(source)
+        int source = GETCHAR();
         switch (source) {
-            case 1: {
-                GETLONG(start_time)
-                GETLONG(end_time)
-                GETLONG(step_count)
-                printf("pedometer: start_time(%d), end_time(%d), step_count(%d)\n", start_time, end_time, step_count);
+                int data_count;
+            case 1:
+                printf("pedometer: start_time(%d), ", GETLONG());
+                printf("end_time(%d), ", GETLONG());
+                printf("step_count(%d)\n", GETLONG());
                 break;
-            }
             case 2:
                 printf("temperature: ");
-                // fallthrough
-            case 3: {
-                printf("humidity: ");
-                GETLONG(start_time)
-                GETLONG(interval)
-                GETLONG(data_count)
-                printf("start_time(%d), interval(%d), data_count(%d)\n", start_time, interval, data_count);
+                printf("start_time(%d), ", GETLONG());
+                printf("interval(%d), ", GETLONG());
+                data_count = GETLONG();
+                printf("data_count(%d)\n", data_count);
                 printf("values: ");
-                while (data_count-- > 0) {
-                    GETLONG(data)
-                    printf("%d\t", data);
-                }
+                while (data_count-- > 0)
+                    printf("%d\t", GETLONG());
                 printf("\n");
                 break;
-            }
-            case 4: {
-                GETLONG(time)
-                GETLONG(data)
-                printf("ultraviolet: time(%d), data(%d)\n", time, data);
+            case 3:
+                printf("humidity: ");
+                printf("start_time(%d), ", GETLONG());
+                printf("interval(%d), ", GETLONG());
+                data_count = GETLONG();
+                printf("data_count(%d)\n", data_count);
+                printf("values: ");
+                while (data_count-- > 0)
+                    printf("%d\t", GETLONG());
+                printf("\n");
                 break;
-            }
+            case 4:
+                printf("ultraviolet: time(%d), ", GETLONG());
+                printf("data(%d)\n", GETLONG());
+                break;
             default:
                 printf("Invalid entry type\n");
         }
@@ -157,21 +156,20 @@ int do_receive() {
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        printf("An interactive shell for cloudsto testing\n");
-        printf("Usage: ./cloudsto action\n");
+        printf("An interactive shell for mesp testing\n");
+        printf("Usage: ./mesp action\n");
         printf("actions: test register save receive\n");
         return 1;
     }
-    sendptr = sendbuf;
-    memset(sendbuf, 0, sizeof(sendbuf));
+    PUTINIT();
     if (strcmp(argv[1], "test") == 0) {
         return do_test();
     } else if (strcmp(argv[1], "register") == 0) {
-        return do_register();
+        return demo_register();
     } else if (strcmp(argv[1], "save") == 0) {
-        return do_save();
+        return demo_save();
     } else if (strcmp(argv[1], "receive") == 0) {
-        return do_receive();
+        return demo_receive();
     } else {
         printf("Invalid action\n");
         return 1;

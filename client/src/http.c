@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
 #include "http.h"
@@ -87,6 +89,7 @@ int tcpclient_send(tcpclient *pclient,char *buff,int size){
 int tcpclient_close(tcpclient *pclient){
     close(pclient->socket);
     pclient->connected = 0;
+    return 0;
 }
 
 int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **response, int *recvlen) {

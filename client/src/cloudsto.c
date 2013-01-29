@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include "cloudsto.h"
 
+char sendbuf[MAXLEN];
+char *sendptr;
+char *recvbuf;
+char *errmsg;
+
 int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf) {
     printf("Sending %d bytes...\n", sendlen);
     tcpclient client;
@@ -23,9 +28,8 @@ int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf) {
 }
 
 int do_test() {
-    if (cloudsto_post(CLOUD_BASE, 0, sendbuf, &recvbuf))
+    if (cloudsto_post((char*)CLOUD_BASE, 0, sendbuf, &recvbuf))
         return 1;
-    GETCHAR(status)
-    printf("Response: status %d\n", status);
+    printf("Response: status %d\n", GETCHAR());
     return 0;
 }

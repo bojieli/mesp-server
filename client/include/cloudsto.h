@@ -11,10 +11,16 @@ int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf);
 int do_test();
 
 #define MAXLEN 10000
-char sendbuf[MAXLEN];
-char *sendptr;
-char *recvbuf;
+extern char sendbuf[MAXLEN];
+extern char *sendptr;
+extern char *recvbuf;
+extern char *errmsg;
+extern const char *CLOUD_BASE;
 
+#define PUTINIT() do{ \
+    sendptr = sendbuf; \
+    memset(sendbuf, 0, sizeof(sendbuf)); \
+} while(0)
 #define PUTCHAR(var) do{ \
     *sendptr++ = (unsigned char)(var); \
 } while(0)
@@ -30,14 +36,21 @@ char *recvbuf;
     memcpy(sendptr, (str), len); \
     sendptr += len; \
 } while(0)
+#define CLOUD_POST(path) cloudsto_post((char*)path, sendptr-sendbuf, sendbuf, &recvbuf)
 
-#define GETLONG(var) int var = (recvbuf[0]<<24) + (recvbuf[1]<<16) + (recvbuf[2]<<8) + recvbuf[3]; recvbuf+=4;
-#define GETCHAR(var) char var = *recvbuf++;
-#define GETSTR(str) \
-    char* str = malloc(*recvbuf)+1; \
-    memcpy(str, recvbuf+1, *recvbuf); \
-    str[*recvbuf] = '\0'; \
+inline int GETLONG() {
+    int ret = (recvbuf[0]<<24) + (recvbuf[1]<<16) + (recvbuf[2]<<8) + recvbuf[3]; 
+    recvbuf+=4;
+    return ret;
+}
+#define GETCHAR() (*recvbuf++)
+inline char* GETS() {
+    char* str = malloc(*recvbuf)+1;
+    memcpy(str, recvbuf+1, *recvbuf);
+    str[(int)*recvbuf] = '\0';
     recvbuf += *recvbuf+1;
+    return str;
+}
 
 #define prompt(msg, ...) printf(msg "\n > ", ##__VA_ARGS__);
 

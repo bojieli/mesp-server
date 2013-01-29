@@ -11,6 +11,12 @@ const char *CLOUD_BASE = "/datiqi/";
         return status; \
     }
 
+/** register account
+ *  @param  username
+ *  @param  password
+ *  @return token
+ *  @return (status)
+ */
 int do_register(char* username, char* password, char** token) {
     PUTINIT();
     PUTS(username);
@@ -20,6 +26,12 @@ int do_register(char* username, char* password, char** token) {
     return 0;
 }
 
+/** login
+ *  @param  username
+ *  @param  password
+ *  @return token
+ *  @return (status)
+ */
 int do_login(char* username, char* password, char** token) {
     PUTINIT();
     PUTS(username);
@@ -30,8 +42,8 @@ int do_login(char* username, char* password, char** token) {
 }
 
 #define count_list_proto(funcname,listtype) \
-int count_##funcname(listtype* l) { \
-    int counter = 0; \
+unsigned count_##funcname(listtype* l) { \
+    unsigned counter = 0; \
     while (l->next) { \
         l = l->next; \
         counter++; \
@@ -42,28 +54,42 @@ int count_##funcname(listtype* l) { \
 count_list_proto(answer, anslist)
 count_list_proto(problem, problem)
 
-int do_save(char* token, unsigned start_time, anslist* data, unsigned* sn) {
+/** save a problem
+ *  @param  token
+ *  @param  data->start_time
+ *  @param  data->l (answer list)
+ *  @return data->sn
+ *  @return (status)
+ */
+int do_save(char* token, problem* data) {
     PUTINIT();
     PUTS(token);
-    PUTLONG(start_time);
-    PUTLONG(count_answer(data));
-    foreach_anslist(data, ans) {
+    PUTLONG(data->start_time);
+    PUTLONG(count_answer(data->l));
+    foreach_anslist(data->l, ans) {
         PUTS(ans.student_no);
         PUTS(ans.ans);
         PUTLONG(ans.time);
     }
     POST_COMMON("save")
-    *sn = GETLONG();
+    data->sn = GETLONG();
     return 0;
 }
 
-int do_modify(char* token, unsigned sn, unsigned start_time, anslist* data) {
+/** modify a problem
+ *  @param  token
+ *  @param  data->sn
+ *  @param  data->start_time
+ *  @param  data->l (answer list)
+ *  @return (status)
+ */
+int do_modify(char* token, problem* data) {
     PUTINIT();
     PUTS(token);
-    PUTLONG(sn);
-    PUTLONG(start_time);
-    PUTLONG(count_answer(data));
-    foreach_anslist(data, ans) {
+    PUTLONG(data->sn);
+    PUTLONG(data->start_time);
+    PUTLONG(count_answer(data->l));
+    foreach_anslist(data->l, ans) {
         PUTS(ans.student_no);
         PUTS(ans.ans);
         PUTLONG(ans.time);
@@ -72,32 +98,41 @@ int do_modify(char* token, unsigned sn, unsigned start_time, anslist* data) {
     return 0;
 }
 
+/** fetch problems
+ *  @param  token
+ *  @param  begin_sn (beginning serial number)
+ *  @param  fetch_num (0 for unlimited)
+ *  @return data (a list of problems)
+ *  @return (status)
+ */
 int do_fetch(char* token, unsigned begin_sn, unsigned fetch_num, problem* data) {
     PUTINIT();
     PUTS(token);
     PUTLONG(begin_sn);
     PUTLONG(fetch_num);
     POST_COMMON("fetch");
-    int problem_count = GETLONG();
+    unsigned problem_count = GETLONG();
     while (problem_count-- > 0) {
-        int ans_count = GETLONG();
-        new_anslist(l);
+        new_problem(p);
+        p.sn = GETLONG();
+        p.start_time = GETLONG();
+        unsigned ans_count = GETLONG();
         while (ans_count-- > 0) {
             ansitem ans;
             ans.student_no = GETS();
             ans.ans = GETS();
             ans.time = GETLONG();
-            add_answer(&l,ans);
+            add_answer(p.l,ans);
         }
-        add_problem(data,&l);
+        add_problem(data,&p);
     }
     return 0;
 }
 
-void add_problem(problem* prob, anslist* ansl) {
+void add_problem(problem* list, problem* newl) {
     problem* __newprob = malloc(sizeof(problem));
-    __newprob->l = ansl;
-    append_list(prob, __newprob);
+    __newprob = newl;
+    append_list(list, __newprob);
 }
 
 void add_answer(anslist* ansl, ansitem ans) {

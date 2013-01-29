@@ -42,51 +42,47 @@ int demo_login() {
 
 int demo_save() {
     char token[MAXLEN];
-    int start_time;
     int entry_num;
+    new_problem(p);
     prompt("token");
     scanf("%s", token);
     prompt("start time");
-    scanf("%d", &start_time);
+    scanf("%d", &p.start_time);
     prompt("num of entries");
     scanf("%d", &entry_num);
-    new_anslist(l);
     for (int i=1; i<=entry_num; i++) {
         ansitem ans;
         prompt("entry #%d: student number, answer string, time used (microseconds)", i);
         scanf("%s %s %d", ans.student_no, ans.ans, &ans.time);
-        add_answer(&l, ans);
+        add_answer(p.l, ans);
     }
-    unsigned sn;
-    int status = do_save(token, start_time, &l, &sn);
+    int status = do_save(token, &p);
     if (status != 0)
         printf("errmsg = %s\n", errmsg);
     else
-        printf("serial no = %d\n", sn);
+        printf("serial no = %d\n", p.sn);
     return 0;
 }
 
 int demo_modify() {
     char token[MAXLEN];
-    int sn;
-    int start_time;
     int entry_num;
+    new_problem(p);
     prompt("token");
     scanf("%s", token);
     prompt("serial number to modify");
-    scanf("%d", &sn);
+    scanf("%d", &p.sn);
     prompt("start time");
-    scanf("%d", &start_time);
+    scanf("%d", &p.start_time);
     prompt("num of entries");
     scanf("%d", &entry_num);
-    new_anslist(l);
     for (int i=1; i<=entry_num; i++) {
         ansitem ans;
         prompt("entry #%d: student no, answer string, time used (microseconds)", i);
         scanf("%s %s %d", ans.student_no, ans.ans, &ans.time);
-        add_answer(&l, ans);
+        add_answer(p.l, ans);
     }
-    int status = do_modify(token, sn, start_time, &l);
+    int status = do_modify(token, &p);
     if (status != 0)
         printf("errmsg = %s\n", errmsg);
     else
@@ -110,9 +106,9 @@ int demo_fetch() {
         return 0;
     }
     printf("received %d problems.\n", count_problem(&data));
-    foreach_problem(data, ansl) {
-        printf("problem #%d:\n", sn_begin++);
-        foreach_anslist(ansl, ans)
+    foreach_problem(data, oneprob) {
+        printf("problem #%d start at %d:\n", oneprob->sn, oneprob->start_time);
+        foreach_anslist(oneprob->l, ans)
             printf("  %15s %10s %10d\n", ans.student_no, ans.ans, ans.time);
         printf("\n");
     }

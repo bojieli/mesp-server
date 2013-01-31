@@ -16,10 +16,12 @@ extern char *sendptr;
 extern char *recvbuf;
 extern char *errmsg;
 extern const char *CLOUD_BASE;
+extern const unsigned char CLIENT_VERSION;
 
 #define PUTINIT() do{ \
     sendptr = sendbuf; \
     memset(sendbuf, 0, sizeof(sendbuf)); \
+    *sendptr++ = (unsigned char)CLIENT_VERSION; \
 } while(0)
 #define PUTCHAR(var) do{ \
     *sendptr++ = (unsigned char)(var); \

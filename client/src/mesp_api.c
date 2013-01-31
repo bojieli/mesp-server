@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "mesp.h"
 const char *CLOUD_BASE = "/mesp/";
+const unsigned char CLIENT_VERSION = 1;
 
 int do_register(app_type app, account_source src, char* username, char* app_token, char** token) {
     return 0;

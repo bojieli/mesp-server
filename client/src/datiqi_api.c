@@ -1,5 +1,6 @@
 #include "datiqi.h"
 const char *CLOUD_BASE = "/datiqi/";
+const unsigned char CLIENT_VERSION = 1;
 
 #define POST_COMMON(path) \
     if (CLOUD_POST(path)) \

@@ -17,9 +17,7 @@ int demo_register() {
     prompt("app token");
     scanf("%s", app_token);
     PUTS(app_token);
-    char *recvbuf = NULL;
-    if (cloudsto_post("register", sendptr-sendbuf, sendbuf, &recvbuf))
-        return 1;
+    CLOUD_POST("register");
     int status = GETCHAR();
     printf("Response: status = %d, ", status);
     if (status != 0)
@@ -75,9 +73,7 @@ int demo_save() {
                 printf("Invalid entry type\n");
         }
     }
-    char *recvbuf = NULL;
-    if (cloudsto_post("save", sendptr-sendbuf, sendbuf, &recvbuf))
-        return 1;
+    CLOUD_POST("save");
     int status = GETCHAR();
     printf("Response: status = %d, ", status);
     if (status != 0)
@@ -100,9 +96,7 @@ int demo_receive() {
     prompt("number of serials (0 for unlimited)");
     scanf("%d", &sn_num);
     PUTLONG(sn_num);
-    char *recvbuf = NULL;
-    if (cloudsto_post("receive", sendptr-sendbuf, sendbuf, &recvbuf))
-        return 1;
+    CLOUD_POST("receive");
     int status = GETCHAR();
     printf("Response: status = %d, ", status);
     if (status != 0) {

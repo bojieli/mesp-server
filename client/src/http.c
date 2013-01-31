@@ -92,7 +92,7 @@ int tcpclient_close(tcpclient *pclient){
     return 0;
 }
 
-int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **response, int *recvlen) {
+int http_post(tcpclient *pclient, char *path, size_t reqlen, char *request, char **response, size_t *recvlen) {
 
     char post[300],host[100],content_len[100];
     char *lpbuf = NULL, *ptmp = NULL;
@@ -100,9 +100,9 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
 
     sprintf(post,"POST %s HTTP/1.1\r\n",path);
     sprintf(host,"Host: %s:%d\r\n", pclient->remote_ip, pclient->remote_port);
-    sprintf(content_len,"Content-Length: %d\r\n\r\n",reqlen);
+    sprintf(content_len,"Content-Length: %d\r\n\r\n",(int)reqlen);
 
-    int len = strlen(post)+strlen(host)+strlen(header)+strlen(content_len)+reqlen+1;
+    size_t len = strlen(post)+strlen(host)+strlen(header)+strlen(content_len)+reqlen+1;
     lpbuf = (char*)malloc(len);
     if(lpbuf==NULL)
         return -1;
@@ -124,7 +124,7 @@ int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **
     free(lpbuf);
     lpbuf = NULL;
 
-    int resplen = tcpclient_recv(pclient,&lpbuf,0);
+    size_t resplen = tcpclient_recv(pclient,&lpbuf,0);
     if (resplen <= 0) {
         if(lpbuf) free(lpbuf);
         return -2;

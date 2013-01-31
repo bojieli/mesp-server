@@ -18,6 +18,6 @@ int tcpclient_recv(tcpclient *pclient,char **lpbuff,int size);
 int tcpclient_send(tcpclient *pclient,char *buff,int size);
 int tcpclient_close(tcpclient *pclient);
 
-int http_post(tcpclient *pclient, char *path, int reqlen, char *request, char **response, int *recvlen);
+int http_post(tcpclient *pclient, char *path, size_t reqlen, char *request, char **response, size_t *recvlen);
 
 #endif

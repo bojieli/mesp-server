@@ -3,12 +3,11 @@ const char *CLOUD_BASE = "/datiqi/";
 const unsigned char CLIENT_VERSION = 1;
 
 #define POST_COMMON(path) \
-    if (CLOUD_POST(path)) \
-        return -1; \
+    CLOUD_POST(path); \
     int status = GETCHAR(); \
     if (status != 0) { \
-        errmsg = malloc(strlen(recvbuf)+1); \
-        strcpy(errmsg,recvbuf); \
+        errmsg = malloc(strlen((char*)recvbuf)+1); \
+        strcpy(errmsg,(char*)recvbuf); \
         return status; \
     }
 

@@ -3,12 +3,13 @@
 #include "cloudsto.h"
 #include "base64.h"
 
-char sendbuf[MAXLEN];
-char *sendptr;
-char *recvbuf;
+unsigned char sendbuf[MAXLEN];
+unsigned char *sendptr;
+unsigned char *recvbuf;
+unsigned char *recvend;
 char *errmsg;
 
-int cloudsto_post(char* path, int sendlen, char* sendbuf, int* recvlen, char** recvbuf) {
+int cloudsto_post(char* path, size_t sendlen, unsigned char* sendbuf, size_t* recvlen, unsigned char** recvbuf) {
 #ifdef DEBUG
     printf("Sending %d bytes...\n", sendlen);
 #endif
@@ -19,12 +20,12 @@ int cloudsto_post(char* path, int sendlen, char* sendbuf, int* recvlen, char** r
     strcpy(fullpath, CLOUD_BASE);
     strcat(fullpath, path);
 
-    int encoded_sendlen;
-    char *encoded_sendbuf = base64_encode(sendlen, sendbuf, &encode_sendlen);
-    int encoded_recvlen;
+    size_t encoded_sendlen;
+    char *encoded_sendbuf = base64_encode(sendbuf, sendlen, &encoded_sendlen);
+    size_t encoded_recvlen;
     char *encoded_recvbuf;
 
-    int errorno = http_post(&client, fullpath, encoded_sendlen, encoded_sendbuf, encoded_recvbuf, &encoded_recvlen);
+    int errorno = http_post(&client, fullpath, encoded_sendlen, encoded_sendbuf, &encoded_recvbuf, &encoded_recvlen);
     free(fullpath);
     *recvbuf = base64_decode(encoded_recvbuf, encoded_recvlen, recvlen);
 
@@ -41,8 +42,10 @@ int cloudsto_post(char* path, int sendlen, char* sendbuf, int* recvlen, char** r
 }
 
 int do_test() {
-    if (cloudsto_post((char*)CLOUD_BASE, 0, sendbuf, &recvbuf))
+    size_t recvlen;
+    if (cloudsto_post((char*)CLOUD_BASE, 0, sendbuf, &recvlen, &recvbuf))
         return 1;
+    recvend += recvlen;
     printf("Response: status %d\n", GETCHAR());
     return 0;
 }

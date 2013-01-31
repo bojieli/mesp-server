@@ -7,13 +7,14 @@
 #define CLOUD_SERVER "127.0.0.1"
 #define CLOUD_PORT 8080
 
-int cloudsto_post(char* path, int sendlen, char* sendbuf, char** recvbuf);
+int cloudsto_post(char* path, size_t sendlen, unsigned char* sendbuf, size_t* recvlen, unsigned char** recvbuf);
 int do_test();
 
 #define MAXLEN 10000
-extern char sendbuf[MAXLEN];
-extern char *sendptr;
-extern char *recvbuf;
+extern unsigned char sendbuf[MAXLEN];
+extern unsigned char *sendptr;
+extern unsigned char *recvbuf;
+extern unsigned char *recvend;
 extern char *errmsg;
 extern const char *CLOUD_BASE;
 extern const unsigned char CLIENT_VERSION;
@@ -33,12 +34,16 @@ extern const unsigned char CLIENT_VERSION;
     *sendptr++ = ((var)<<24)>>24; \
 } while(0)
 #define PUTS(str) do{ \
-    int len = strlen(str); \
+    size_t len = strlen(str); \
     PUTCHAR(len); \
     memcpy(sendptr, (str), len); \
     sendptr += len; \
 } while(0)
-#define CLOUD_POST(path) cloudsto_post((char*)path, sendptr-sendbuf, sendbuf, &recvbuf)
+#define CLOUD_POST(path) do { \
+    size_t recvlen; \
+    cloudsto_post((char*)path, sendptr-sendbuf, (unsigned char*)sendbuf, &recvlen, (unsigned char**)&recvbuf);\
+    recvend = recvbuf + recvlen; \
+} while(0)
 
 inline int GETLONG() {
     int ret = (recvbuf[0]<<24) + (recvbuf[1]<<16) + (recvbuf[2]<<8) + recvbuf[3]; 

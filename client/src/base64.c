@@ -1,8 +1,9 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "base64.h"
 
-static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+static const char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
                                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
                                 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
@@ -11,13 +12,13 @@ static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'w', 'x', 'y', 'z', '0', '1', '2', '3',
                                 '4', '5', '6', '7', '8', '9', '+', '/'};
 static char *decoding_table = NULL;
-static int mod_table[] = {0, 2, 1};
+static const int mod_table[] = {0, 2, 1};
 
-char *base64_encode(const unsigned char *data,
+char *base64_encode(unsigned char *data,
                     size_t input_length,
                     size_t *output_length) {
 
-    *output_length = (size_t) (4.0 * ceil((double) input_length / 3.0));
+    *output_length = 4 * ((input_length-1) / 3 + 1);
 
     char *encoded_data = malloc(*output_length);
     if (encoded_data == NULL) return NULL;
@@ -42,7 +43,7 @@ char *base64_encode(const unsigned char *data,
     return encoded_data;
 }
 
-unsigned char *base64_decode(const char *data,
+unsigned char *base64_decode(char *data,
                     size_t input_length,
                     size_t *output_length) {
 
@@ -59,10 +60,10 @@ unsigned char *base64_decode(const char *data,
 
     for (int i = 0, j = 0; i < input_length;) {
 
-        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[(unsigned)data[i++]];
+        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[(unsigned)data[i++]];
+        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[(unsigned)data[i++]];
+        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[(unsigned)data[i++]];
 
         uint32_t triple = (sextet_a << 3 * 6)
                         + (sextet_b << 2 * 6)
@@ -82,7 +83,7 @@ void build_decoding_table() {
     decoding_table = malloc(256);
 
     for (int i = 0; i < 0x40; i++)
-        decoding_table[encoding_table[i]] = i;
+        decoding_table[(unsigned)encoding_table[i]] = i;
 }
 
 void base64_cleanup() {

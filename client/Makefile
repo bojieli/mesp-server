@@ -14,6 +14,9 @@ cloudsto: base64
 http:
 	${CC} -c -o bin/http.o src/http.c
 
+http_win:
+	${CC} -c -o bin/http.o src/http_win.c
+
 base64:
 	${CC} -c -o bin/base64.o src/base64.c
 

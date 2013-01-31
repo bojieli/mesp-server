@@ -12,6 +12,7 @@ typedef struct {
     int connected;       
 } tcpclient;
 
+tcpclient* tcpclient_singleton(const char* server, const int port);
 int tcpclient_create(tcpclient *pclient,const char *host, int port);
 int tcpclient_conn(tcpclient *pclient);
 int tcpclient_recv(tcpclient *pclient,char **lpbuff,int size);

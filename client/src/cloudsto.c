@@ -13,8 +13,6 @@ int cloudsto_post(char* path, size_t sendlen, unsigned char* sendbuf, size_t* re
 #ifdef DEBUG
     printf("Sending %d bytes...\n", sendlen);
 #endif
-    tcpclient client;
-    tcpclient_create(&client, CLOUD_SERVER, CLOUD_PORT);
 
     char *fullpath = malloc(strlen(path) + strlen(CLOUD_BASE) + 2);
     strcpy(fullpath, CLOUD_BASE);
@@ -25,7 +23,7 @@ int cloudsto_post(char* path, size_t sendlen, unsigned char* sendbuf, size_t* re
     size_t encoded_recvlen;
     char *encoded_recvbuf;
 
-    int errorno = http_post(&client, fullpath, encoded_sendlen, encoded_sendbuf, &encoded_recvbuf, &encoded_recvlen);
+    int errorno = http_post(tcpclient_singleton(CLOUD_SERVER, CLOUD_PORT), fullpath, encoded_sendlen, encoded_sendbuf, &encoded_recvbuf, &encoded_recvlen);
     free(fullpath);
     *recvbuf = base64_decode(encoded_recvbuf, encoded_recvlen, recvlen);
 

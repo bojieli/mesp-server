@@ -9,6 +9,16 @@
 
 #define BUFFER_SIZE 1024
 
+tcpclient* tcpclient_singleton(const char* server, const int port) {
+    static tcpclient client;
+    static int created = 0;
+    if (!created) {
+        tcpclient_create(&client, server, port);
+        created = 1;
+    }
+    return &client;
+}
+
 int tcpclient_create(tcpclient *pclient,const char *host, int port){
     struct hostent *he;
 
